@@ -15,7 +15,7 @@ The project is public mainly as an example for anyone who wants to do something 
 Install with [uv](https://docs.astral.sh/uv/) or pipx:
 
 ```shell
-uv tool install devin --from <link-to-repo>
+uv tool install devin-dcc --from https://github.com/henrikwilhelmsen/devin-dcc.git
 ```
 
 Show available commands:
@@ -27,13 +27,13 @@ devin --help
 Or run without installing:
 
 ```shell
-uvx --from <link-to-repo> devin --help
+uvx --from https://github.com/henrikwilhelmsen/devin-dcc.git devin --help
 ```
 
 Launch MotionBuilder 2025 with extra dependencies:
 
 ```shell
-uvx --from <link-to-repo> --python 3.11 --with <dependency> devin mobu -v 2025 --include-prefix-site
+uvx --from https://github.com/henrikwilhelmsen/devin-dcc.git --python 3.11 --with <dependency> devin mobu -v 2025 --include-prefix-site
 ```
 
 ## Development
@@ -43,7 +43,7 @@ Requires [uv package manager](https://docs.astral.sh/uv/)
 Clone the project with Git:
 
 ```shell
-git clone <project-url>
+git clone https://github.com/henrikwilhelmsen/devin-dcc.git
 ```
 
 Create venv and sync dependencies:

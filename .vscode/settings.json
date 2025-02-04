@@ -1,0 +1,43 @@
+{
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit"
+        }
+    },
+    "ruff.enable": true,
+    "ruff.fixAll": true,
+    "ruff.organizeImports": true,
+    "editor.rulers": [
+        88,
+        120
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "cSpell.words": [
+        "customise",
+        "debugpy",
+        "idname",
+        "mayapy",
+        "Mobu",
+        "Mobupy",
+        "motionbuilder",
+        "onefile",
+        "pipx",
+        "pydantic",
+        "pydocstyle",
+        "pyinstaller",
+        "pyproject",
+        "pytest",
+        "PYTHONUNBUFFERED",
+        "SCRIPTPLUGINS",
+        "sitepackages",
+        "venv",
+        "Wilhelmsen"
+    ],
+}

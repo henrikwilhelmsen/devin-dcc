@@ -8,11 +8,20 @@
 
 import logging
 import os
+import sys
 from functools import cached_property
 from subprocess import call
 from typing import Literal
 
-from pydantic import DirectoryPath, Field, computed_field
+from pydantic import (
+    AliasChoices,
+    DirectoryPath,
+    Field,
+    FilePath,
+    ValidationInfo,
+    computed_field,
+    field_validator,
+)
 
 from devin.cli.base import BaseCommand
 from devin.constants import DATA_DIR
@@ -31,12 +40,35 @@ BLENDER_PYTHON_MAP = {"3.6": "3.10", "4.2": "3.11", "4.3": "3.11"}
 class Blender(BaseCommand):
     """Run Blender."""
 
-    version: Literal["3.6", "4.2", "4.3"]
-    args: list[str] = Field(default_factory=list)
-    site_dir: list[DirectoryPath] = Field(default_factory=list)
+    version: BLENDER_VERSIONS = Field(
+        default="4.2",
+        validation_alias=AliasChoices("version", "v"),
+    )
     system_extensions: DirectoryPath | None = Field(default=None)
     system_scripts: DirectoryPath | None = Field(default=None)
     download: bool = Field(default=True)
+
+    @field_validator("version", mode="after")
+    @classmethod
+    def check_python_version_matches_sys(cls, value: str, info: ValidationInfo) -> str:
+        """Check that Python version of the requested Motionbuilder matches sys.version.
+
+        Only runs if include_prefix_site is set to true, otherwise there's no reason
+        the Python version needs to match.
+        """
+        blender_py_req = BLENDER_PYTHON_MAP.get(value)
+        current_py = f"{sys.version_info.major}.{sys.version_info.minor}"
+
+        if info.data["include_prefix_site"] and current_py != blender_py_req:
+            msg = (
+                f"Blender {value} requires Python {blender_py_req}, "
+                "unable to launch with the '--include-prefix-site' flag and "
+                f"Python {current_py}. Either remove the flag or run this command "
+                f"again with Python {blender_py_req}"
+            )
+            raise ValueError(msg)
+
+        return value
 
     @computed_field
     @cached_property
@@ -77,23 +109,38 @@ class Blender(BaseCommand):
             "PYDEVD_DISABLE_FILE_VALIDATION": "1",
         }
 
-        # Add paths in `self.site_dir` to Blenders environment.
+        # Add paths in `self.site_path` to Blenders environment.
         # Variable is picked up and added with `site.sitepackages` in bootstrap script
-        if self.site_dir:
-            env["BLENDER_SITE_PATH"] = ";".join(
-                [x.as_posix() for x in self.site_dir],
-            )
+        if self._computed_site_path is not None:
+            env["BLENDER_SITE_PATH"] = self._computed_site_path
 
         # Contains script to bootstrap Blender and reset variable to default
         env["BLENDER_USER_SCRIPTS"] = (DATA_DIR / "blender_scripts").as_posix()
-
         if self.system_scripts is not None:
             env["BLENDER_SYSTEM_SCRIPTS"] = self.system_scripts.as_posix()
-
         if self.system_extensions is not None:
             env["BLENDER_SYSTEM_EXTENSIONS"] = self.system_extensions.as_posix()
 
         return env
+
+    @computed_field
+    @cached_property
+    def _computed_executable(self) -> FilePath:
+        if self.executable is not None:
+            return self.executable
+
+        exe = get_blender(version=self.version)
+        if exe is None:
+            msg = (
+                f"Could not locate Blender executable. Make sure Blender {self.version}"
+                " is installed. If installed in a non-standard location, provide a "
+                "path to the Blender executable with the '--executable' option "
+                "instead."
+            )
+            logger.exception(msg=msg)
+            raise FileNotFoundError(msg)
+
+        return exe
 
     def cli_cmd(self) -> None:
         """Blender CLI command.
@@ -101,13 +148,11 @@ class Blender(BaseCommand):
         Launch Blender with the resolved environment and arguments.
         """
         self.configure_logging()
-        args = [get_blender(version=self.version).as_posix()]
+        args = [self._computed_executable.as_posix(), *self.args]
 
         # Easiest way to ensure addons are loaded only for current session
         if self.system_addons:
             args.extend(["--addons", ",".join(self.system_addons)])
-
-        args.extend(self.args)
 
         call(
             args=args,

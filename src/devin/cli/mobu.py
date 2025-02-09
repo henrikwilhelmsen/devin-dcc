@@ -25,9 +25,6 @@ from pydantic import (
     computed_field,
     field_validator,
 )
-from pydantic_settings import (
-    CliImplicitFlag,
-)
 
 from devin.cli.base import BaseCommand
 from devin.constants import DATA_DIR
@@ -45,35 +42,9 @@ MOBU_PYTHON_MAP = {"2022": "3.7", "2023": "3.7", "2024": "3.10", "2025": "3.11"}
 class MobuBase(BaseCommand):
     """Motionbuilder base command model."""
 
-    include_prefix_site: CliImplicitFlag[bool] = Field(
-        default=False,
-        description="Add site-packages dir of current Python env to Mobu at launch",
-    )
     version: MOBU_VERSIONS = Field(
         default="2025",
         validation_alias=AliasChoices("version", "v"),
-    )
-    args: list[str] = Field(
-        default_factory=list,
-        description="Additional arguments to pass to executable",
-    )
-    temp_config_dir: CliImplicitFlag[bool] = Field(
-        default=False,
-        description="Launch with MB_CONFIG_DIR set to an empty temp dir",
-    )
-    site_path: list[DirectoryPath] = Field(
-        default_factory=list,
-        description="Extra paths to add to executable's site directories at launch",
-    )
-    _executable_help = (
-        "Optional path to the executable to use. If not set, "
-        "the program will search the default install locations or "
-        "the Windows registry for one."
-    )
-    executable: FilePath | None = Field(
-        default=None,
-        description=_executable_help,
-        validation_alias=AliasChoices("executable", "e"),
     )
 
     @computed_field
@@ -163,20 +134,20 @@ class Mobupy(MobuBase):
         self.configure_logging()
         args = [self._computed_executable.as_posix(), *self.args]
         env = self.env
+        temp_dir = None
 
         # MB_CONFIG_DIR - user config, use to override and run with clean setup
         if self.temp_config_dir:
             temp_dir = tempfile.mkdtemp()
             env["MB_CONFIG_DIR"] = temp_dir
             logger.info("Created temp config dir: '%s'", temp_dir)
-
         try:
             call(
                 args=args,
                 env=env,
             )
         finally:
-            if self.temp_config_dir:
+            if temp_dir is not None:
                 shutil.rmtree(temp_dir)
                 logger.info("Deleted temp config dir: '%s'", temp_dir)
 
@@ -261,6 +232,7 @@ class Mobu(MobuBase):
         self.configure_logging()
         args = [self._computed_executable.as_posix(), *self.args]
         env = self.env
+        temp_dir = None
 
         # MB_CONFIG_DIR - user config, use to override and run with clean setup
         if self.temp_config_dir:
@@ -274,6 +246,6 @@ class Mobu(MobuBase):
                 env=env,
             )
         finally:
-            if self.temp_config_dir:
+            if temp_dir is not None:
                 shutil.rmtree(temp_dir)
                 logger.info("Deleted temp config dir: '%s'", temp_dir)

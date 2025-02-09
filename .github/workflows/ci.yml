@@ -4,22 +4,22 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-        - name: Checkout Repo
-          uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v4
 
-        - name: Setup
-          uses: ./.github/actions/setup
+      - name: Setup
+        uses: ./.github/actions/setup
 
-        - name: Lint
-          run: uv run ruff check src tests
+      - name: Lint
+        run: uv run ruff check src tests
   test:
     runs-on: ubuntu-latest
     steps:
-        - name: Checkout Repo
-          uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v4
 
-        - name: Setup
-          uses: ./.github/actions/setup
+      - name: Setup
+        uses: ./.github/actions/setup
 
-        - name: Test
-          run: uv run pytest -v
+      - name: Test
+        run: uv run pytest -v --cov-report term-missing --cov=devin tests

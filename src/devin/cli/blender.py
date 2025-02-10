@@ -11,7 +11,6 @@ import os
 import sys
 from functools import cached_property
 from subprocess import call
-from typing import Literal
 
 from pydantic import (
     AliasChoices,
@@ -25,16 +24,9 @@ from pydantic import (
 
 from devin.cli.base import BaseCommand
 from devin.constants import DATA_DIR
-from devin.dcc.blender import get_blender
+from devin.dcc.blender import BLENDER_PYTHON_MAP, BLENDER_VERSIONS, get_blender
 
 logger = logging.getLogger(__name__)
-
-
-# Supported Blender versions
-BLENDER_VERSIONS = Literal["3.6", "4.2", "4.3"]
-
-# Mapping of supported Blender Python versions
-BLENDER_PYTHON_MAP = {"3.6": "3.10", "4.2": "3.11", "4.3": "3.11"}
 
 
 class Blender(BaseCommand):
@@ -43,10 +35,20 @@ class Blender(BaseCommand):
     version: BLENDER_VERSIONS = Field(
         default="4.2",
         validation_alias=AliasChoices("version", "v"),
+        description="Which version of Blender to run.",
     )
-    system_extensions: DirectoryPath | None = Field(default=None)
-    system_scripts: DirectoryPath | None = Field(default=None)
-    download: bool = Field(default=True)
+    system_extensions: DirectoryPath | None = Field(
+        default=None,
+        description="Path to the Blender SYSTEM_EXTENSIONS directory.",
+    )
+    system_scripts: DirectoryPath | None = Field(
+        default=None,
+        description="Path to the Blender SYSTEM_SCRIPTS directory.",
+    )
+    download: bool = Field(
+        default=True,
+        description="Download Blender if it's not found.",
+    )
 
     @field_validator("version", mode="after")
     @classmethod

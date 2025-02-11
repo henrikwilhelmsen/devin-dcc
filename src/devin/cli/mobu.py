@@ -26,7 +26,7 @@ from pydantic import (
     field_validator,
 )
 
-from devin.cli.base import BaseCommand
+from devin.cli.base import BaseDCCCommand
 from devin.constants import DATA_DIR
 from devin.dcc.mobu import get_mobu, get_mobupy
 
@@ -39,7 +39,7 @@ MOBU_VERSIONS = Literal["2022", "2023", "2024", "2025"]
 MOBU_PYTHON_MAP = {"2022": "3.7", "2023": "3.7", "2024": "3.10", "2025": "3.11"}
 
 
-class MobuBase(BaseCommand):
+class MobuBase(BaseDCCCommand):
     """Motionbuilder base command model."""
 
     version: MOBU_VERSIONS = Field(

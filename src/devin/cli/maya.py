@@ -20,7 +20,7 @@ from pydantic import (
     computed_field,
 )
 
-from devin.cli.base import BaseCommand
+from devin.cli.base import BaseDCCCommand
 from devin.dcc.maya import get_maya, get_mayapy
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ MAYA_PYTHON_MAP = {"2022": "3.7", "2023": "3.9", "2024": "3.10", "2025": "3.11"}
 
 # TODO: Add include-prefix-site option (see Mobu implementation)
 # TODO: Add --temp-config-dir option (see Mobu implementation)
-class MayaBaseCommand(BaseCommand):
+class MayaBaseCommand(BaseDCCCommand):
     """Maya base command with fields that are shared between all Maya commands."""
 
     version: MAYA_VERSIONS = Field(

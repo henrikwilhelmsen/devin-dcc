@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseCommand(BaseModel):
-    """Base command, containing arguments shared between all CLI commands."""
+    """Base command model."""
 
     log_level: Literal[
         "CRITICAL",
@@ -40,6 +40,15 @@ class BaseCommand(BaseModel):
         "DEBUG",
         "NOTSET",
     ] = "INFO"
+
+    def configure_logging(self) -> None:
+        """Configure logging for the CLI."""
+        logging.basicConfig(level=self.log_level)
+        os.environ["DEVIN_LOG_LEVEL"] = self.log_level
+
+
+class BaseDCCCommand(BaseCommand):
+    """Base command, containing arguments shared between all CLI commands."""
 
     args: list[str] = Field(
         default_factory=list,
@@ -81,8 +90,3 @@ class BaseCommand(BaseModel):
             return ";".join([x.as_posix() for x in site_dirs])
 
         return None
-
-    def configure_logging(self) -> None:
-        """Configure logging for the CLI."""
-        logging.basicConfig(level=self.log_level)
-        os.environ["DEVIN_LOG_LEVEL"] = self.log_level

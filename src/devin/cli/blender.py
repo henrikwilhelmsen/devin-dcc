@@ -22,7 +22,7 @@ from pydantic import (
     field_validator,
 )
 
-from devin.cli.base import BaseCommand
+from devin.cli.base import BaseDCCCommand
 from devin.constants import DATA_DIR
 from devin.dcc.blender import (
     BLENDER_PYTHON_MAP,
@@ -34,7 +34,7 @@ from devin.dcc.blender import (
 logger = logging.getLogger(__name__)
 
 
-class Blender(BaseCommand):
+class Blender(BaseDCCCommand):
     """Run Blender."""
 
     version: BLENDER_VERSIONS = Field(

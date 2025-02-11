@@ -7,5 +7,12 @@
 """Devin DCC application constants."""
 
 from pathlib import Path
+from typing import Literal
 
 DATA_DIR = Path(__file__).parent / "data"
+
+# Supported platforms, following platform.system() return values
+PLATFORMS = Literal["Linux", "Windows"]
+
+DEVIN_ROOT_DIR = Path.home() / "devin-dcc"
+DEVIN_RESOURCE_DIR = DEVIN_ROOT_DIR / "resource"

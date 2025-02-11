@@ -148,8 +148,8 @@ def test_blender_invalid_version(mock_get_blender: MagicMock | AsyncMock) -> Non
 
 
 def test_blender_missing_executable(mock_get_blender: MagicMock | AsyncMock) -> None:
-    """Test that a FileNotFoundError is raised if the get_maya function returns None."""
-    mock_get_blender.return_value = None
+    """Test that a FileNotFoundError is raised if executable is not found."""
+    mock_get_blender.side_effect = FileNotFoundError
 
     with pytest.raises(FileNotFoundError):
-        CliApp().run(Devin, cli_args=["blender"])
+        CliApp().run(Devin, cli_args=["blender", "--download", "false"])

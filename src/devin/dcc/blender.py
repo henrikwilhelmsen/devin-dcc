@@ -10,9 +10,12 @@ import logging
 import platform
 from contextlib import suppress
 from pathlib import Path
+from shutil import unpack_archive
 from typing import Literal
 
-from devin.constants import DEVIN_RESOURCE_DIR, PLATFORMS
+import httpx
+
+from devin.constants import DEVIN_RESOURCE_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +27,7 @@ BLENDER_VERSIONS = Literal["3.6", "4.2", "4.3"]
 BLENDER_PYTHON_MAP = {"3.6": "3.10", "4.2": "3.11", "4.3": "3.11"}
 
 # Download URLs for Blender versions
-BLENDER_DOWNLOADS: dict[PLATFORMS, dict[BLENDER_VERSIONS, str]] = {
+BLENDER_DOWNLOADS: dict[str, dict[BLENDER_VERSIONS, str]] = {
     "Linux": {
         "3.6": "https://download.blender.org/release/Blender3.6/blender-3.6.8-linux-x64.tar.xz",
         "4.2": "https://download.blender.org/release/Blender4.2/blender-4.2.6-linux-x64.tar.xz",
@@ -37,43 +40,61 @@ BLENDER_DOWNLOADS: dict[PLATFORMS, dict[BLENDER_VERSIONS, str]] = {
     },
 }
 
+ARCHIVE_FORMATS = {
+    "Linux": "tar.xz",
+    "Windows": "zip",
+}
+
 DEVIN_BLENDER_DIR = DEVIN_RESOURCE_DIR / "blender"
 
 # Path to the Blender executable relative to the downloaded Blender dir
 BLENDER_EXE_LOCATION = "blender.exe" if platform.system == "Windows" else "blender"
 
 
-def get_existing_downloads() -> list[Path]:
-    """Get a list of directories in `DEVIN_BLENDER_DIR`."""
-    return [x for x in DEVIN_BLENDER_DIR.glob("*") if x.is_dir()]
-
-
-def get_existing_devin_blender(version: BLENDER_VERSIONS) -> Path | None:
+def get_devin_blender(version: BLENDER_VERSIONS) -> Path:
     """Get the path to the an existing Blender exe downloaded by devin-dcc."""
-    for directory in get_existing_downloads():
-        versioned_dir_name = (
-            Path(BLENDER_DOWNLOADS["Windows"][version]).stem
-            if platform.system == "Windows"
-            else Path(BLENDER_DOWNLOADS["Linux"][version]).stem
-        )
-
-        if versioned_dir_name == directory.name:
+    for directory in [x for x in DEVIN_BLENDER_DIR.glob("*") if x.is_dir()]:
+        if version in directory.name:
             blender = directory / BLENDER_EXE_LOCATION
-            return blender if blender.is_file() else None
+            if blender.is_file():
+                return blender
 
-    return None
+    msg = f"Unable to locate devin Blender for version {version}"
+    raise FileNotFoundError(msg)
 
 
-def download_blender(version: BLENDER_VERSIONS, target_dir: Path) -> Path:
-    """Download and extract Blender to target dir, return path to downloaded dir."""
-    raise NotImplementedError
+def download_blender(version: BLENDER_VERSIONS, target_dir: Path) -> None:
+    """Download and extract Blender to target dir."""
+    try:
+        url = BLENDER_DOWNLOADS[platform.system()][version]
+    except KeyError as e:
+        msg = f"Failed to find url for Blender '{version}' on '{platform.system()}'"
+        raise KeyError(msg) from e
+
+    # TODO: Error handling
+    response = httpx.get(url=url)
+    archive = DEVIN_BLENDER_DIR / f"tmp.{ARCHIVE_FORMATS[platform.system()]}"
+
+    if not archive.parent.exists():
+        archive.parent.mkdir(parents=True)
+
+    archive.touch()
+
+    with archive.open(mode="wb") as file:
+        file.write(response.content)
+
+    unpack_archive(
+        filename=archive,
+        extract_dir=target_dir,
+    )
+
+    archive.unlink()
 
 
 def get_blender(version: BLENDER_VERSIONS) -> Path:
     """Get the path to a Blender executable for the given version if installed."""
-    devin_blender = get_existing_devin_blender(version=version)
-    if devin_blender is not None:
-        return devin_blender
+    with suppress(FileNotFoundError):
+        return get_devin_blender(version=version)
 
     if platform.system() == "Windows":
         default_blender = Path(
@@ -83,7 +104,6 @@ def get_blender(version: BLENDER_VERSIONS) -> Path:
             return default_blender
 
     msg = f"Failed to locate Blender '{version}'"
-    logger.exception(msg=msg)
     raise FileNotFoundError(msg)
 
 
@@ -92,16 +112,13 @@ def get_blender_download_if_missing(version: BLENDER_VERSIONS) -> Path:
     with suppress(FileNotFoundError):
         return get_blender(version=version)
 
-    # TODO: Add try/except
-    blender_dir = download_blender(version=version, target_dir=DEVIN_BLENDER_DIR)
-    blender = blender_dir / BLENDER_EXE_LOCATION
-
-    if blender.is_file:
-        return blender
+    # TODO: Error handling
+    download_blender(version=version, target_dir=DEVIN_BLENDER_DIR)
+    with suppress(FileNotFoundError):
+        return get_devin_blender(version=version)
 
     msg = (
         f"Failed to download Blender '{version}', could not locate executable in "
-        f"downloaded directory '{blender_dir}'"
+        f"'{DEVIN_BLENDER_DIR}' after extracting archive"
     )
-    logger.exception(msg=msg)
     raise FileNotFoundError(msg)

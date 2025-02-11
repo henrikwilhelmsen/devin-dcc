@@ -1,4 +1,3 @@
-# Copyright (C) 2025 Henrik Wilhelmsen.
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,6 +8,7 @@
 import logging
 import os
 import sys
+from contextlib import suppress
 from functools import cached_property
 from subprocess import call
 
@@ -24,7 +24,12 @@ from pydantic import (
 
 from devin.cli.base import BaseCommand
 from devin.constants import DATA_DIR
-from devin.dcc.blender import BLENDER_PYTHON_MAP, BLENDER_VERSIONS, get_blender
+from devin.dcc.blender import (
+    BLENDER_PYTHON_MAP,
+    BLENDER_VERSIONS,
+    get_blender,
+    get_blender_download_if_missing,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -131,18 +136,23 @@ class Blender(BaseCommand):
         if self.executable is not None:
             return self.executable
 
-        exe = get_blender(version=self.version)
-        if exe is None:
-            msg = (
-                f"Could not locate Blender executable. Make sure Blender {self.version}"
-                " is installed. If installed in a non-standard location, provide a "
-                "path to the Blender executable with the '--executable' option "
-                "instead."
-            )
-            logger.exception(msg=msg)
-            raise FileNotFoundError(msg)
+        # Try to get by searching for executable
+        with suppress(FileNotFoundError):
+            return get_blender(version=self.version)
 
-        return exe
+        # Try to download if not found and self.download is true
+        if self.download:
+            with suppress(FileNotFoundError):
+                return get_blender_download_if_missing(version=self.version)
+
+        # Raise an exception if all methods for getting the exe failed.
+        msg = (
+            f"Could not locate Blender executable. Make sure Blender {self.version}"
+            " is installed. If installed in a non-standard location, provide a "
+            "path to the Blender executable with the '--executable' option "
+            "instead."
+        )
+        raise FileNotFoundError(msg)
 
     def cli_cmd(self) -> None:
         """Blender CLI command.

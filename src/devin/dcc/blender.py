@@ -19,6 +19,8 @@ from devin.constants import DEVIN_RESOURCE_DIR
 
 logger = logging.getLogger(__name__)
 
+# http success status code
+SUCCESS_STATUS_CODE = 200
 
 # Supported Blender versions
 BLENDER_VERSIONS = Literal["3.6", "4.2", "4.3"]
@@ -64,31 +66,55 @@ def get_devin_blender(version: BLENDER_VERSIONS) -> Path:
 
 
 def download_blender(version: BLENDER_VERSIONS, target_dir: Path) -> None:
-    """Download and extract Blender to target dir."""
+    """Download and extract Blender to the given target directory.
+
+    Args:
+        version (BLENDER_VERSIONS): The version of Blender to download.
+        target_dir (Path): The directory to extract the downloaded archive to.
+
+    Raises:
+        NotImplementedError: If the platform is not supported.
+        RuntimeError: If the download fails.
+        OSError: If the archive cannot be extracted.
+    """
     try:
         url = BLENDER_DOWNLOADS[platform.system()][version]
     except KeyError as e:
         msg = f"Failed to find url for Blender '{version}' on '{platform.system()}'"
-        raise KeyError(msg) from e
+        raise NotImplementedError(msg) from e
 
-    # TODO: Error handling
+    logger.info("Downloading Blender %s from '%s'", version, url)
     response = httpx.get(url=url)
+    if response.status_code != SUCCESS_STATUS_CODE:
+        msg = f"Failed to download Blender '{version}' from '{url}'"
+        raise RuntimeError(msg)
+
     archive = DEVIN_BLENDER_DIR / f"tmp.{ARCHIVE_FORMATS[platform.system()]}"
+    dir_name = url.split("/")[-1].replace(f".{ARCHIVE_FORMATS[platform.system()]}", "")
 
-    if not archive.parent.exists():
-        archive.parent.mkdir(parents=True)
+    try:
+        logger.info(
+            "Extracting Blender %s to '%s'",
+            version,
+            DEVIN_BLENDER_DIR / dir_name,
+        )
+        if not archive.parent.exists():
+            archive.parent.mkdir(parents=True)
 
-    archive.touch()
+        archive.touch()
 
-    with archive.open(mode="wb") as file:
-        file.write(response.content)
+        with archive.open(mode="wb") as file:
+            file.write(response.content)
 
-    unpack_archive(
-        filename=archive,
-        extract_dir=target_dir,
-    )
-
-    archive.unlink()
+        unpack_archive(
+            filename=archive,
+            extract_dir=target_dir,
+        )
+    except OSError as e:
+        msg = f"Failed to extract Blender archive '{archive}' to '{target_dir}'"
+        raise OSError(msg) from e
+    finally:
+        archive.unlink(missing_ok=True)
 
 
 def get_blender(version: BLENDER_VERSIONS) -> Path:
@@ -108,12 +134,26 @@ def get_blender(version: BLENDER_VERSIONS) -> Path:
 
 
 def get_blender_download_if_missing(version: BLENDER_VERSIONS) -> Path:
-    """Get the path to blender, download the given version if not found."""
+    """Get the path to a Blender executable for the given version.
+
+    Args:
+        version (BLENDER_VERSIONS): The version of Blender to get the executable for.
+
+    Raises:
+        FileNotFoundError: If the Blender executable cannot be found or downloaded.
+
+    Returns:
+        Path: Path to the Blender executable.
+    """
     with suppress(FileNotFoundError):
         return get_blender(version=version)
 
-    # TODO: Error handling
-    download_blender(version=version, target_dir=DEVIN_BLENDER_DIR)
+    try:
+        download_blender(version=version, target_dir=DEVIN_BLENDER_DIR)
+    except (FileNotFoundError, OSError, NotImplementedError) as e:
+        msg = f"Failed to download Blender {version}"
+        raise FileNotFoundError(msg) from e
+
     with suppress(FileNotFoundError):
         return get_devin_blender(version=version)
 

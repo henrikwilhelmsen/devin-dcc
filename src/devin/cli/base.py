@@ -7,6 +7,7 @@
 """Devin DCC cli base command."""
 
 import logging
+import logging.config
 import os
 import sys
 from pathlib import Path
@@ -43,12 +44,40 @@ class BaseCommand(BaseModel):
 
     def configure_logging(self) -> None:
         """Configure logging for the CLI."""
-        logging.basicConfig(level=self.log_level)
+        logging_config: dict[
+            str,
+            int
+            | bool
+            | dict[str, dict[str, str]]
+            | dict[str, dict[str, str | list[str]]],
+        ] = {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "simple": {
+                    "format": "%(levelname)s: %(message)s",
+                },
+                "detailed": {
+                    "format": "[%(levelname)s|%(module)s|L%(lineno)d] %(asctime)s: %(message)s",  # noqa: E501
+                    "datefmt": "%Y-%m-%dT%H:%M:%S%z",
+                },
+            },
+            "handlers": {
+                "stdout": {
+                    "class": "logging.StreamHandler",
+                    "level": self.log_level,
+                    "formatter": "simple",
+                    "stream": "ext://sys.stdout",
+                },
+            },
+            "loggers": {"root": {"level": "DEBUG", "handlers": ["stdout"]}},
+        }
+        logging.config.dictConfig(logging_config)
         os.environ["DEVIN_LOG_LEVEL"] = self.log_level
 
 
 class BaseDCCCommand(BaseCommand):
-    """Base command, containing arguments shared between all CLI commands."""
+    """Base command, containing arguments shared between all DCC commands."""
 
     args: list[str] = Field(
         default_factory=list,
@@ -66,7 +95,7 @@ class BaseDCCCommand(BaseCommand):
         default_factory=list,
         description="Extra paths to add to executable's site directories at launch",
     )
-    _executable_help = (
+    _executable_help: str = (
         "Optional path to the executable to use. If not set, "
         "the program will search the default install locations."
     )
@@ -79,7 +108,7 @@ class BaseDCCCommand(BaseCommand):
     @computed_field
     @property
     def _computed_site_path(self) -> str | None:
-        site_dirs = []
+        site_dirs: list[Path] = []
         if self.include_prefix_site:
             site_dirs = [(Path(sys.prefix) / "Lib" / "site-packages")]
 

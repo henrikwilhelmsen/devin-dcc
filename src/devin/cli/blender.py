@@ -8,9 +8,9 @@
 import logging
 import os
 import sys
-from contextlib import suppress
 from functools import cached_property
 from subprocess import call
+from typing import TYPE_CHECKING
 
 from pydantic import (
     AliasChoices,
@@ -30,6 +30,9 @@ from devin.dcc.blender import (
     get_blender,
     get_blender_download_if_missing,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +84,11 @@ class Blender(BaseDCCCommand):
     @cached_property
     def system_addons(self) -> list[str]:
         """Get a list of addons from the SYSTEM_EXTENSIONS and _SCRIPTS directories."""
-        addons = []
-        legacy_addons_dir = (
+        addons: list[str] = []
+        legacy_addons_dir: Path | None = (
             self.system_scripts / "addons" if self.system_scripts is not None else None
         )
-        extension_addons_dir = (
+        extension_addons_dir: Path | None = (
             self.system_extensions / "system"
             if self.system_extensions is not None
             else None
@@ -134,16 +137,31 @@ class Blender(BaseDCCCommand):
     @cached_property
     def _computed_executable(self) -> FilePath:
         if self.executable is not None:
+            logger.debug("Using provided executable: '%s'", self.executable)
             return self.executable
 
+        blender: Path | None = None
+
         # Try to get by searching for executable
-        with suppress(FileNotFoundError):
-            return get_blender(version=self.version)
+        try:
+            blender = get_blender(version=self.version)
+        except KeyError:
+            msg = "Encountered an error when searching for Blender executable"
+            logger.exception(
+                msg=msg,
+            )
+
+        if blender is not None:
+            return blender
 
         # Try to download if not found and self.download is true
         if self.download:
-            with suppress(FileNotFoundError):
+            try:
                 return get_blender_download_if_missing(version=self.version)
+            except FileNotFoundError as e:
+                msg = "An error occurred when downloading Blender"
+                logger.exception(msg=msg)
+                raise FileNotFoundError(msg) from e
 
         # Raise an exception if all methods for getting the exe failed.
         msg = (
@@ -152,6 +170,7 @@ class Blender(BaseDCCCommand):
             "path to the Blender executable with the '--executable' option "
             "instead."
         )
+        logger.error(msg=msg)
         raise FileNotFoundError(msg)
 
     def cli_cmd(self) -> None:
@@ -166,7 +185,7 @@ class Blender(BaseDCCCommand):
         if self.system_addons:
             args.extend(["--addons", ",".join(self.system_addons)])
 
-        call(
+        _ = call(
             args=args,
             env=self.env,
         )

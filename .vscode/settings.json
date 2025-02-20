@@ -18,6 +18,7 @@
     "python.testing.pytestArgs": [
         "tests"
     ],
+    "python.languageServer": "None",
     "python.analysis.typeCheckingMode": "basic",
     "cSpell.words": [
         "customise",

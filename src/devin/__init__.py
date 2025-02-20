@@ -17,7 +17,7 @@ from devin.cli.devin import Devin
 
 def main() -> None:
     """Main entry point for the CLI."""
-    _ = CliApp.run(Devin, cli_args=["blender", "--version", "4.3"])
+    _ = CliApp.run(Devin)
 
 
 if __name__ == "__main__":

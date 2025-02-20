@@ -16,3 +16,4 @@ PLATFORMS = Literal["Linux", "Windows"]
 
 DEVIN_ROOT_DIR = Path.home() / "devin-dcc"
 DEVIN_RESOURCE_DIR = DEVIN_ROOT_DIR / "resource"
+DEVIN_LOG_FILE: Path = DEVIN_ROOT_DIR / "log.txt"

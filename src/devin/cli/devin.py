@@ -7,6 +7,7 @@
 """Devin DCC main CLI command."""
 
 import logging
+from typing import ClassVar
 
 from pydantic_settings import (
     BaseSettings,
@@ -20,13 +21,13 @@ from devin.cli.cleanup import ClearResources
 from devin.cli.maya import Maya, Mayapy
 from devin.cli.mobu import Mobu, Mobupy
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(name=__name__)
 
 
 class Devin(BaseSettings):
     """Devin DCC - CLI tool to launch DCC software."""
 
-    model_config = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         cli_parse_args=True,
         cli_kebab_case=True,
         env_prefix="DEVIN_",
@@ -38,7 +39,6 @@ class Devin(BaseSettings):
     mobu: CliSubCommand[Mobu]
     mobupy: CliSubCommand[Mobupy]
     blender: CliSubCommand[Blender]
-
     clear_resources: CliSubCommand[ClearResources]
 
     def cli_cmd(self) -> None:
@@ -46,4 +46,4 @@ class Devin(BaseSettings):
 
         Set up logging and run sub-command.
         """
-        CliApp.run_subcommand(self)
+        _ = CliApp.run_subcommand(self)

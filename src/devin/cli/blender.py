@@ -8,9 +8,9 @@
 import logging
 import os
 import sys
-from contextlib import suppress
 from functools import cached_property
 from subprocess import call
+from typing import TYPE_CHECKING
 
 from pydantic import (
     AliasChoices,
@@ -30,6 +30,9 @@ from devin.dcc.blender import (
     get_blender,
     get_blender_download_if_missing,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +61,7 @@ class Blender(BaseDCCCommand):
     @field_validator("version", mode="after")
     @classmethod
     def check_python_version_matches_sys(cls, value: str, info: ValidationInfo) -> str:
-        """Check that Python version of the requested Motionbuilder matches sys.version.
+        """Check that Python version of the requested Blender matches sys.version.
 
         Only runs if include_prefix_site is set to true, otherwise there's no reason
         the Python version needs to match.
@@ -73,6 +76,7 @@ class Blender(BaseDCCCommand):
                 f"Python {current_py}. Either remove the flag or run this command "
                 f"again with Python {blender_py_req}"
             )
+            logger.error(msg)
             raise ValueError(msg)
 
         return value
@@ -81,11 +85,11 @@ class Blender(BaseDCCCommand):
     @cached_property
     def system_addons(self) -> list[str]:
         """Get a list of addons from the SYSTEM_EXTENSIONS and _SCRIPTS directories."""
-        addons = []
-        legacy_addons_dir = (
+        addons: list[str] = []
+        legacy_addons_dir: Path | None = (
             self.system_scripts / "addons" if self.system_scripts is not None else None
         )
-        extension_addons_dir = (
+        extension_addons_dir: Path | None = (
             self.system_extensions / "system"
             if self.system_extensions is not None
             else None
@@ -110,7 +114,7 @@ class Blender(BaseDCCCommand):
     @cached_property
     def env(self) -> dict[str, str]:
         """Set up the Blender environment."""
-        env = {
+        env: dict[str, str] = {
             **os.environ.copy(),
             "PYTHONUNBUFFERED": "1",
             "PYDEVD_DISABLE_FILE_VALIDATION": "1",
@@ -133,17 +137,34 @@ class Blender(BaseDCCCommand):
     @computed_field
     @cached_property
     def _computed_executable(self) -> FilePath:
+        """Get the final executable path to run Blender with."""
+        # If executable argument is provided, return it
         if self.executable is not None:
+            logger.debug("Using provided executable: '%s'", self.executable)
             return self.executable
 
-        # Try to get by searching for executable
-        with suppress(FileNotFoundError):
-            return get_blender(version=self.version)
+        blender: Path | None = None
+
+        # Search devin-dcc resources and system directories
+        try:
+            blender = get_blender(version=self.version)
+        except KeyError:
+            msg = "Encountered an error when searching for Blender executable"
+            logger.exception(
+                msg=msg,
+            )
+
+        if blender is not None:
+            return blender
 
         # Try to download if not found and self.download is true
         if self.download:
-            with suppress(FileNotFoundError):
+            try:
                 return get_blender_download_if_missing(version=self.version)
+            except FileNotFoundError as e:
+                msg = "An error occurred when downloading Blender"
+                logger.exception(msg=msg)
+                raise FileNotFoundError(msg) from e
 
         # Raise an exception if all methods for getting the exe failed.
         msg = (
@@ -152,6 +173,7 @@ class Blender(BaseDCCCommand):
             "path to the Blender executable with the '--executable' option "
             "instead."
         )
+        logger.error(msg=msg)
         raise FileNotFoundError(msg)
 
     def cli_cmd(self) -> None:
@@ -160,13 +182,13 @@ class Blender(BaseDCCCommand):
         Launch Blender with the resolved environment and arguments.
         """
         self.configure_logging()
-        args = [self._computed_executable.as_posix(), *self.args]
+        args: list[str] = [self._computed_executable.as_posix(), *self.args]
 
         # Easiest way to ensure addons are loaded only for current session
         if self.system_addons:
             args.extend(["--addons", ",".join(self.system_addons)])
 
-        call(
+        _ = call(
             args=args,
             env=self.env,
         )

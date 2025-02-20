@@ -17,7 +17,7 @@ from devin.cli.devin import Devin
 
 def main() -> None:
     """Main entry point for the CLI."""
-    CliApp.run(Devin)
+    _ = CliApp.run(Devin)
 
 
 if __name__ == "__main__":

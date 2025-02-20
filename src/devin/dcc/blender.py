@@ -8,119 +8,286 @@
 
 import logging
 import platform
-from contextlib import suppress
+from logging import Logger
 from pathlib import Path
 from shutil import unpack_archive
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import httpx
+from pydantic import BaseModel, computed_field
 
 from devin.constants import DEVIN_RESOURCE_DIR
 
-logger = logging.getLogger(__name__)
+logger: Logger = logging.getLogger(__name__)
 
 # http success status code
 SUCCESS_STATUS_CODE = 200
 
 # Supported Blender versions
-BLENDER_VERSIONS = Literal["3.6", "4.2", "4.3"]
+BLENDER_VERSIONS: TypeAlias = Literal["3.6", "4.2", "4.3"]
 
 # Mapping of supported Blender Python versions
-BLENDER_PYTHON_MAP = {"3.6": "3.10", "4.2": "3.11", "4.3": "3.11"}
+BLENDER_PYTHON_MAP: dict[str, str] = {"3.6": "3.10", "4.2": "3.11", "4.3": "3.11"}
 
-# Download URLs for Blender versions
-BLENDER_DOWNLOADS: dict[str, dict[BLENDER_VERSIONS, str]] = {
-    "Linux": {
-        "3.6": "https://download.blender.org/release/Blender3.6/blender-3.6.8-linux-x64.tar.xz",
-        "4.2": "https://download.blender.org/release/Blender4.2/blender-4.2.6-linux-x64.tar.xz",
-        "4.3": "https://download.blender.org/release/Blender4.3/blender-4.3.2-linux-x64.tar.xz",
-    },
-    "Windows": {
-        "3.6": "https://download.blender.org/release/Blender3.6/blender-3.6.8-windows-x64.zip",
-        "4.2": "https://download.blender.org/release/Blender4.2/blender-4.2.6-windows-x64.zip",
-        "4.3": "https://download.blender.org/release/Blender4.3/blender-4.3.2-windows-x64.zip",
-    },
+ARCHIVE_FORMATS: dict[str, str] = {
+    "Linux": ".tar.xz",
+    "Windows": ".zip",
 }
 
-ARCHIVE_FORMATS = {
-    "Linux": "tar.xz",
-    "Windows": "zip",
-}
-
-DEVIN_BLENDER_DIR = DEVIN_RESOURCE_DIR / "blender"
+DEVIN_BLENDER_DIR: Path = DEVIN_RESOURCE_DIR / "blender"
 
 # Path to the Blender executable relative to the downloaded Blender dir
-BLENDER_EXE_LOCATION = "blender.exe" if platform.system == "Windows" else "blender"
+BLENDER_EXE_NAME: Literal["blender.exe", "blender"] = (
+    "blender.exe" if platform.system() == "Windows" else "blender"
+)
 
 
-def get_devin_blender(version: BLENDER_VERSIONS) -> Path:
-    """Get the path to the an existing Blender exe downloaded by devin-dcc."""
-    for directory in [x for x in DEVIN_BLENDER_DIR.glob("*") if x.is_dir()]:
-        if version in directory.name:
-            blender = directory / BLENDER_EXE_LOCATION
-            if blender.is_file():
-                return blender
+class BlenderDownloadConfig(BaseModel):
+    """BaseModel to hold Blender download settings."""
 
-    msg = f"Unable to locate devin Blender for version {version}"
-    raise FileNotFoundError(msg)
+    platform: Literal["Linux", "Windows"]
+    version: BLENDER_VERSIONS
+    long_version: str
+    url: str
+
+    @computed_field
+    @property
+    def python_version(self) -> str:
+        """The Python version that ships with the Blender version of this config."""
+        return BLENDER_PYTHON_MAP[self.version]
+
+    @computed_field
+    @property
+    def archive_format(self) -> str:
+        """The platform specific format of the archive to download from Blender."""
+        return ARCHIVE_FORMATS[self.platform]
+
+    @computed_field
+    @property
+    def dir_name(self) -> str:
+        """The name of the install directory.
+
+        Matches the name of the archive that was downloaded from Blender's servers.
+        """
+        return self.url.split("/")[-1].replace(self.archive_format, "")
+
+    @computed_field
+    @property
+    def install_dir(self) -> Path:
+        """The full path to the install directory."""
+        return DEVIN_BLENDER_DIR / self.dir_name
+
+    @computed_field
+    @property
+    def blender_exe(self) -> Path:
+        """The full path to the downloaded Blender's executable."""
+        return self.install_dir / BLENDER_EXE_NAME
 
 
-def download_blender(version: BLENDER_VERSIONS, target_dir: Path) -> None:
-    """Download and extract Blender to the given target directory.
+BLENDER_DOWNLOAD_CONFIGS: list[BlenderDownloadConfig] = [
+    BlenderDownloadConfig(
+        platform="Linux",
+        version="3.6",
+        long_version="3.6.8",
+        url="https://download.blender.org/release/Blender3.6/blender-3.6.8-linux-x64.tar.xz",
+    ),
+    BlenderDownloadConfig(
+        platform="Windows",
+        version="3.6",
+        long_version="3.6.8",
+        url="https://download.blender.org/release/Blender3.6/blender-3.6.8-windows-x64.zip",
+    ),
+    BlenderDownloadConfig(
+        platform="Linux",
+        version="4.2",
+        long_version="4.2.6",
+        url="https://download.blender.org/release/Blender4.2/blender-4.2.6-linux-x64.tar.xz",
+    ),
+    BlenderDownloadConfig(
+        platform="Windows",
+        version="4.2",
+        long_version="4.2.6",
+        url="https://download.blender.org/release/Blender4.2/blender-4.2.6-windows-x64.zip",
+    ),
+    BlenderDownloadConfig(
+        platform="Linux",
+        version="4.3",
+        long_version="4.3.2",
+        url="https://download.blender.org/release/Blender4.3/blender-4.3.2-linux-x64.tar.xz",
+    ),
+    BlenderDownloadConfig(
+        platform="Windows",
+        version="4.3",
+        long_version="4.3.2",
+        url="https://download.blender.org/release/Blender4.3/blender-4.3.2-windows-x64.zip",
+    ),
+]
+
+
+def get_blender_download_config(version: BLENDER_VERSIONS) -> BlenderDownloadConfig:
+    """Get the download config for the given Blender version.
+
+    Args:
+        version (BLENDER_VERSIONS): The version of Blender to get the config for.
+
+    Raises:
+        KeyError: If a config for the given version was not found.
+
+    Returns:
+        BlenderDownloadConfig: A BlenderDownloadConfig model for the given version.
+    """
+    system: str = platform.system()
+    try:
+        return next(
+            x
+            for x in BLENDER_DOWNLOAD_CONFIGS
+            if x.version == version and x.platform == system
+        )
+    except StopIteration as e:
+        msg: str = "Failed to find Blender download config"
+        logger.exception(
+            msg=msg,
+            extra={"version": version, "system": system},
+        )
+        raise KeyError(msg) from e
+
+
+def get_devin_blender(version: BLENDER_VERSIONS) -> Path | None:
+    """Get the path to a Blender executable managed by devin-dcc.
+
+    Args:
+        version (BLENDER_VERSIONS): Version of Blender to get the executable for.
+
+    Raises:
+        KeyError: If unable to find a download config for the given version.
+
+    Returns:
+        Path | None: Path to the Blender executable if found, otherwise None.
+    """
+    try:
+        config: BlenderDownloadConfig = get_blender_download_config(version=version)
+    except KeyError as e:
+        msg: str = "Failed to get Blender config, unable to search for existing install"
+        logger.exception(msg, extra={"version": version})
+        raise KeyError(msg) from e
+
+    if config.blender_exe.is_file():
+        return config.blender_exe
+
+    return None
+
+
+def download_blender(version: BLENDER_VERSIONS) -> Path:
+    """Download the given version of Blender and return the path to the executable.
+
+    The files will be downloaded to a version specific folder in the devin-dcc
+    resources directory.
 
     Args:
         version (BLENDER_VERSIONS): The version of Blender to download.
-        target_dir (Path): The directory to extract the downloaded archive to.
 
     Raises:
-        NotImplementedError: If the platform is not supported.
-        RuntimeError: If the download fails.
-        OSError: If the archive cannot be extracted.
+        KeyError: If unable to find a download config for the given version.
+        RuntimeError: If the download failed.
+        OSError: If the archive extraction failed.
+        FileNotFoundError: If the executable is not found after downloading.
+
+    Returns:
+        Path: The path to the downloaded Blender's executable.
     """
     try:
-        url = BLENDER_DOWNLOADS[platform.system()][version]
+        download_config: BlenderDownloadConfig = get_blender_download_config(
+            version=version,
+        )
     except KeyError as e:
-        msg = f"Failed to find url for Blender '{version}' on '{platform.system()}'"
-        raise NotImplementedError(msg) from e
+        msg: str = "Failed to get Blender config, unable to download"
+        logger.exception(msg, extra={"version": version})
+        raise KeyError(msg) from e
 
-    logger.info("Downloading Blender %s from '%s'", version, url)
-    response = httpx.get(url=url)
-    if response.status_code != SUCCESS_STATUS_CODE:
-        msg = f"Failed to download Blender '{version}' from '{url}'"
+    logger.info(
+        "Downloading Blender %s",
+        version,
+        extra={"version": version, "url": download_config.url},
+    )
+
+    response = httpx.get(url=download_config.url)
+    if not response.is_success:
+        msg = "Failed to download Blender"
+        logger.exception(
+            msg=msg,
+            extra={
+                version: version,
+                "url": download_config.url,
+                "status code": response.status_code,
+                "reason": response.reason_phrase,
+            },
+        )
         raise RuntimeError(msg)
 
-    archive = DEVIN_BLENDER_DIR / f"tmp.{ARCHIVE_FORMATS[platform.system()]}"
-    dir_name = url.split("/")[-1].replace(f".{ARCHIVE_FORMATS[platform.system()]}", "")
-
+    tmp_archive = DEVIN_BLENDER_DIR / f"tmp{download_config.archive_format}"
     try:
-        logger.info(
-            "Extracting Blender %s to '%s'",
-            version,
-            DEVIN_BLENDER_DIR / dir_name,
-        )
-        if not archive.parent.exists():
-            archive.parent.mkdir(parents=True)
+        if not tmp_archive.parent.exists():
+            tmp_archive.parent.mkdir(parents=True)
 
-        archive.touch()
+        tmp_archive.touch()
 
-        with archive.open(mode="wb") as file:
-            file.write(response.content)
+        with tmp_archive.open(mode="wb") as file:
+            _ = file.write(response.content)
 
         unpack_archive(
-            filename=archive,
-            extract_dir=target_dir,
+            filename=tmp_archive,
+            extract_dir=DEVIN_BLENDER_DIR,
         )
     except OSError as e:
-        msg = f"Failed to extract Blender archive '{archive}' to '{target_dir}'"
+        msg = "Failed to extract Blender archive"
+        logger.exception(
+            msg=msg,
+            extra={"archive": tmp_archive, "target dir": download_config.install_dir},
+        )
         raise OSError(msg) from e
     finally:
-        archive.unlink(missing_ok=True)
+        tmp_archive.unlink(missing_ok=True)
+
+    if download_config.blender_exe.is_file():
+        logger.info(
+            msg="Blender download successful",
+            extra={"exe": download_config.blender_exe},
+        )
+        return download_config.blender_exe
+
+    msg = "Failed to locate executable after download"
+    logger.error(msg=msg, extra={"executable": download_config.blender_exe})
+    raise FileNotFoundError(msg)
 
 
-def get_blender(version: BLENDER_VERSIONS) -> Path:
-    """Get the path to a Blender executable for the given version if installed."""
-    with suppress(FileNotFoundError):
-        return get_devin_blender(version=version)
+def get_blender(version: BLENDER_VERSIONS) -> Path | None:
+    """Get the path to the Blender executable if it exists.
+
+    Will check the devin-dcc resource dir for any downloads first, and then default
+    system paths.
+
+    Args:
+        version (BLENDER_VERSIONS): The version of Blender to get the executable for.
+
+    Raises:
+        KeyError: If a KeyError occurred when searching for existing devin-dcc Blender.
+
+    Returns:
+        Path | None: The path to the Blender executable if found, otherwise None.
+    """
+    devin_blender: Path | None = None
+    try:
+        devin_blender = get_devin_blender(version=version)
+    except KeyError as e:
+        msg = "Encountered an error when searching for devin-dcc Blender install"
+        logger.exception(
+            msg=msg,
+            extra={version: version},
+        )
+        raise KeyError(msg) from e
+
+    if devin_blender is not None and devin_blender.is_file():
+        return devin_blender
 
     if platform.system() == "Windows":
         default_blender = Path(
@@ -129,8 +296,7 @@ def get_blender(version: BLENDER_VERSIONS) -> Path:
         if default_blender.is_file():
             return default_blender
 
-    msg = f"Failed to locate Blender '{version}'"
-    raise FileNotFoundError(msg)
+    return None
 
 
 def get_blender_download_if_missing(version: BLENDER_VERSIONS) -> Path:
@@ -145,20 +311,13 @@ def get_blender_download_if_missing(version: BLENDER_VERSIONS) -> Path:
     Returns:
         Path: Path to the Blender executable.
     """
-    with suppress(FileNotFoundError):
-        return get_blender(version=version)
+    existing_blender = get_blender(version=version)
+    if existing_blender is not None:
+        return existing_blender
 
     try:
-        download_blender(version=version, target_dir=DEVIN_BLENDER_DIR)
-    except (FileNotFoundError, OSError, NotImplementedError) as e:
-        msg = f"Failed to download Blender {version}"
+        return download_blender(version=version)
+    except (FileNotFoundError, OSError, RuntimeError, KeyError) as e:
+        msg = "Failed to download Blender"
+        logger.exception(msg=msg, extra={"version": version})
         raise FileNotFoundError(msg) from e
-
-    with suppress(FileNotFoundError):
-        return get_devin_blender(version=version)
-
-    msg = (
-        f"Failed to download Blender '{version}', could not locate executable in "
-        f"'{DEVIN_BLENDER_DIR}' after extracting archive"
-    )
-    raise FileNotFoundError(msg)

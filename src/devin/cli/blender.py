@@ -61,7 +61,7 @@ class Blender(BaseDCCCommand):
     @field_validator("version", mode="after")
     @classmethod
     def check_python_version_matches_sys(cls, value: str, info: ValidationInfo) -> str:
-        """Check that Python version of the requested Motionbuilder matches sys.version.
+        """Check that Python version of the requested Blender matches sys.version.
 
         Only runs if include_prefix_site is set to true, otherwise there's no reason
         the Python version needs to match.
@@ -76,6 +76,7 @@ class Blender(BaseDCCCommand):
                 f"Python {current_py}. Either remove the flag or run this command "
                 f"again with Python {blender_py_req}"
             )
+            logger.error(msg)
             raise ValueError(msg)
 
         return value
@@ -113,7 +114,7 @@ class Blender(BaseDCCCommand):
     @cached_property
     def env(self) -> dict[str, str]:
         """Set up the Blender environment."""
-        env = {
+        env: dict[str, str] = {
             **os.environ.copy(),
             "PYTHONUNBUFFERED": "1",
             "PYDEVD_DISABLE_FILE_VALIDATION": "1",
@@ -136,13 +137,15 @@ class Blender(BaseDCCCommand):
     @computed_field
     @cached_property
     def _computed_executable(self) -> FilePath:
+        """Get the final executable path to run Blender with."""
+        # If executable argument is provided, return it
         if self.executable is not None:
             logger.debug("Using provided executable: '%s'", self.executable)
             return self.executable
 
         blender: Path | None = None
 
-        # Try to get by searching for executable
+        # Search devin-dcc resources and system directories
         try:
             blender = get_blender(version=self.version)
         except KeyError:
@@ -179,7 +182,7 @@ class Blender(BaseDCCCommand):
         Launch Blender with the resolved environment and arguments.
         """
         self.configure_logging()
-        args = [self._computed_executable.as_posix(), *self.args]
+        args: list[str] = [self._computed_executable.as_posix(), *self.args]
 
         # Easiest way to ensure addons are loaded only for current session
         if self.system_addons:

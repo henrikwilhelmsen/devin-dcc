@@ -10,7 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.10.5",
- "pydantic-settings>=2.7.1",
+    "pydantic-settings>=2.7.1",
 ]
 license = "MPL-2.0"
 license-files = ["LICENSE"]
@@ -55,8 +55,11 @@ per-file-ignores = { "tests/*" = [
     "S101",   # Assert usage
 ] }
 
-
 pydocstyle.convention = "google"
+
+[tool.basedpyright]
+include = ["src"]
+reportAny = false
 
 [dependency-groups]
 dev = [

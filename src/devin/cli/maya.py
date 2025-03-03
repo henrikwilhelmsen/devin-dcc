@@ -21,6 +21,7 @@ from pydantic import (
 )
 
 from devin.cli.base import BaseDCCCommand
+from devin.constants import DATA_DIR
 from devin.dcc.maya import get_maya, get_mayapy
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,6 @@ MAYA_VERSIONS = Literal["2022", "2023", "2024", "2025"]
 MAYA_PYTHON_MAP = {"2022": "3.7", "2023": "3.9", "2024": "3.10", "2025": "3.11"}
 
 
-# TODO: Add include-prefix-site option (see Mobu implementation)
 # TODO: Add --temp-config-dir option (see Mobu implementation)
 class MayaBaseCommand(BaseDCCCommand):
     """Maya base command with fields that are shared between all Maya commands."""
@@ -77,6 +77,8 @@ class MayaBaseCommand(BaseDCCCommand):
         if self.module_path:
             env["MAYA_MODULE_PATH"] = ";".join([x.as_posix() for x in self.module_path])
 
+        self.python_path.append(DATA_DIR / "maya_scripts" / "startup")
+
         # Set up PYTHONPATH, prepending all paths provided as arguments
         if self.python_path:
             orig_python_path = env.get("PYTHONPATH")
@@ -86,6 +88,10 @@ class MayaBaseCommand(BaseDCCCommand):
                 python_paths.append(orig_python_path)
 
             env["PYTHONPATH"] = ";".join(python_paths)
+
+        # MAYA_SITE_PATH - extra site dirs (see maya_scripts/userSetup.py)
+        if self._computed_site_path is not None:
+            env["MAYA_SITE_PATH"] = self._computed_site_path
 
         return env
 

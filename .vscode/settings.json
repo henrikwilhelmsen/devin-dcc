@@ -28,8 +28,10 @@
         "Mobu",
         "Mobupy",
         "motionbuilder",
+        "ngskintools",
         "onefile",
         "pipx",
+        "PROGRAMDATA",
         "pydantic",
         "pydocstyle",
         "pyinstaller",
@@ -37,6 +39,7 @@
         "pytest",
         "PYTHONUNBUFFERED",
         "SCRIPTPLUGINS",
+        "sitecustomize",
         "sitepackages",
         "venv",
         "Wilhelmsen"

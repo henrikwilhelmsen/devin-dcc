@@ -1,6 +1,6 @@
 [project]
 name = "devin-dcc"
-version = "0.0.1"
+dynamic = ["version"]
 description = "CLI app for launching DCC applications."
 readme = "README.md"
 authors = [
@@ -32,6 +32,9 @@ build-backend = "pdm.backend"
 includes = ["src"]
 package-dir = "src"
 source-includes = ["tests"]
+
+[tool.pdm.version]
+source = "scm"
 
 
 [tool.ruff]

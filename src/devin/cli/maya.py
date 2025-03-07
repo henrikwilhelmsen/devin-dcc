@@ -164,7 +164,9 @@ class Mayapy(MayaBaseCommand):
             "-c",
             "from site import getsitepackages;[print(x) for x in getsitepackages()]",
         ]
-        sitepackages = check_output(args=args, encoding="utf-8").splitlines()
+        sitepackages = [
+            Path(x) for x in check_output(args=args, encoding="utf-8").splitlines()
+        ]
 
         # get ngSkinTools from ApplicationPlugins dir
         ng_skin_tools_paths = [
@@ -177,14 +179,14 @@ class Mayapy(MayaBaseCommand):
         # Add the first ngSkinTools plugin dir that exists to sitepackages
         for p in ng_skin_tools_paths:
             if p.is_dir():
-                sitepackages.append(p.as_posix())
+                sitepackages.append(p)
                 break
 
         # Create the sitecustomize.py file
         sitecustomize_data = "\n".join(
             [
                 "import site",
-                *[f"site.addsitedir('{x}')" for x in sitepackages],
+                *[f"site.addsitedir('{x.as_posix()}')" for x in sitepackages],
             ],
         )
 

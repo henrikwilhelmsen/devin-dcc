@@ -52,7 +52,7 @@ class MayaBaseCommand(BaseDCCCommand):
     )
     plugin_path: list[DirectoryPath] = Field(
         default_factory=list,
-        description="Extra paths to add to MAYA_PLUGIN_PATH",
+        description="Extra paths to add to MAYA_PLUG_IN_PATH",
     )
     module_path: list[DirectoryPath] = Field(
         default_factory=list,
@@ -71,7 +71,9 @@ class MayaBaseCommand(BaseDCCCommand):
 
         # Set up Maya plugin path
         if self.plugin_path:
-            env["MAYA_PLUGIN_PATH"] = ";".join([x.as_posix() for x in self.plugin_path])
+            env["MAYA_PLUG_IN_PATH"] = ";".join(
+                [x.as_posix() for x in self.plugin_path]
+            )
 
         # Set up Maya module path
         if self.module_path:

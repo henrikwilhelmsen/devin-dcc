@@ -10,6 +10,7 @@ import logging
 import logging.config
 import os
 import sys
+from distutils.sysconfig import get_python_lib
 from pathlib import Path
 from typing import Literal
 
@@ -110,7 +111,7 @@ class BaseDCCCommand(BaseCommand):
     def _computed_site_path(self) -> str | None:
         site_dirs: list[Path] = []
         if self.include_prefix_site:
-            site_dirs = [(Path(sys.prefix) / "Lib" / "site-packages")]
+            site_dirs = [Path(get_python_lib(prefix=sys.prefix))]
 
         if self.site_path:
             site_dirs.extend(self.site_path)

@@ -135,7 +135,7 @@ def test_maya_paths(
     expected_module_path = ";".join([x.as_posix() for x in module_paths])
     expected_python_path = ";".join([x.as_posix() for x in python_paths])
 
-    assert expected_plugin_path in kwargs["env"]["MAYA_PLUGIN_PATH"]
+    assert expected_plugin_path in kwargs["env"]["MAYA_PLUG_IN_PATH"]
     assert expected_module_path in kwargs["env"]["MAYA_MODULE_PATH"]
     assert expected_python_path in kwargs["env"]["PYTHONPATH"]
 

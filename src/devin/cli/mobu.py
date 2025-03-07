@@ -58,7 +58,7 @@ class MobuBase(BaseDCCCommand):
             site_dirs.extend(self.site_path)
 
         if site_dirs:
-            return ";".join([x.as_posix() for x in site_dirs])
+            return os.pathsep.join([x.as_posix() for x in site_dirs])
 
         return None
 
@@ -199,13 +199,13 @@ class Mobu(MobuBase):
 
         # MOTIONBUILDER_PLUGIN_PATH - extra plugins (list)
         if self.plugin_path:
-            env["MOTIONBUILDER_PLUGIN_PATH"] = ";".join(
+            env["MOTIONBUILDER_PLUGIN_PATH"] = os.pathsep.join(
                 [x.as_posix() for x in self.plugin_path],
             )
 
         # MOTIONBUILDER_MODULE_PATH - extra modules (list)
         if self.module_path:
-            env["MOTIONBUILDER_MODULE_PATH"] = ";".join(
+            env["MOTIONBUILDER_MODULE_PATH"] = os.pathsep.join(
                 [x.as_posix() for x in self.module_path],
             )
 
@@ -214,7 +214,7 @@ class Mobu(MobuBase):
         if self.python_startup:
             startup_dirs.extend(self.python_startup)
 
-        env["MOTIONBUILDER_PYTHON_STARTUP"] = ";".join(
+        env["MOTIONBUILDER_PYTHON_STARTUP"] = os.pathsep.join(
             [x.as_posix() for x in startup_dirs],
         )
 

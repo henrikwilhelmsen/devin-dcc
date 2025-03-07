@@ -131,9 +131,9 @@ def test_maya_paths(
     _, kwargs = mock_call.call_args
 
     # Check that the paths passed to the command was added to env
-    expected_plugin_path = ";".join([x.as_posix() for x in plugin_paths])
-    expected_module_path = ";".join([x.as_posix() for x in module_paths])
-    expected_python_path = ";".join([x.as_posix() for x in python_paths])
+    expected_plugin_path = os.pathsep.join([x.as_posix() for x in plugin_paths])
+    expected_module_path = os.pathsep.join([x.as_posix() for x in module_paths])
+    expected_python_path = os.pathsep.join([x.as_posix() for x in python_paths])
 
     assert expected_plugin_path in kwargs["env"]["MAYA_PLUG_IN_PATH"]
     assert expected_module_path in kwargs["env"]["MAYA_MODULE_PATH"]
@@ -172,7 +172,7 @@ def test_maya_existing_python_path(
 
     mock_call.assert_called_once()
     _, kwargs = mock_call.call_args
-    expected_python_path = ";".join([x.as_posix() for x in python_paths])
+    expected_python_path = os.pathsep.join([x.as_posix() for x in python_paths])
 
     assert expected_python_path in kwargs["env"]["PYTHONPATH"]
     assert existing_py_path.as_posix() in kwargs["env"]["PYTHONPATH"]

@@ -21,7 +21,7 @@ def add_extra_site_dirs() -> None:
     extra_site_dirs = os.getenv(MOBU_SITE_PATH)
 
     if extra_site_dirs is not None:
-        directories = extra_site_dirs.split(";")
+        directories = extra_site_dirs.split(os.pathsep)
 
         for d in directories:
             site.addsitedir(d)

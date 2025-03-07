@@ -179,10 +179,12 @@ def test_mobu_paths(
     _, kwargs = mock_call.call_args
 
     # Check that the paths passed to the command was added to env
-    expected_plugin_path = ";".join([x.as_posix() for x in plugin_paths])
-    expected_module_path = ";".join([x.as_posix() for x in module_paths])
-    expected_site_path = ";".join([x.as_posix() for x in site_paths])
-    expected_startup_path = ";".join([x.as_posix() for x in python_startup_paths])
+    expected_plugin_path = os.pathsep.join([x.as_posix() for x in plugin_paths])
+    expected_module_path = os.pathsep.join([x.as_posix() for x in module_paths])
+    expected_site_path = os.pathsep.join([x.as_posix() for x in site_paths])
+    expected_startup_path = os.pathsep.join(
+        [x.as_posix() for x in python_startup_paths],
+    )
 
     assert expected_plugin_path in kwargs["env"]["MOTIONBUILDER_PLUGIN_PATH"]
     assert expected_module_path in kwargs["env"]["MOTIONBUILDER_MODULE_PATH"]

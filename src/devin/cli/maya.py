@@ -75,13 +75,15 @@ class MayaBaseCommand(BaseDCCCommand):
 
         # Set up Maya plugin path
         if self.plugin_path:
-            env["MAYA_PLUG_IN_PATH"] = ";".join(
+            env["MAYA_PLUG_IN_PATH"] = os.pathsep.join(
                 [x.as_posix() for x in self.plugin_path],
             )
 
         # Set up Maya module path
         if self.module_path:
-            env["MAYA_MODULE_PATH"] = ";".join([x.as_posix() for x in self.module_path])
+            env["MAYA_MODULE_PATH"] = os.pathsep.join(
+                [x.as_posix() for x in self.module_path],
+            )
 
         self.python_path.append(DATA_DIR / "maya_scripts" / "startup")
 
@@ -93,7 +95,7 @@ class MayaBaseCommand(BaseDCCCommand):
             if orig_python_path is not None:
                 python_paths.append(orig_python_path)
 
-            env["PYTHONPATH"] = ";".join(python_paths)
+            env["PYTHONPATH"] = os.pathsep.join(python_paths)
 
         # MAYA_SITE_PATH - extra site dirs (see maya_scripts/userSetup.py)
         if self._computed_site_path is not None:

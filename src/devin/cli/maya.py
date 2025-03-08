@@ -172,10 +172,10 @@ class Mayapy(MayaBaseCommand):
 
         # get ngSkinTools from ApplicationPlugins dir
         ng_skin_tools_paths = [
-            Path.home() / "Autodesk/ApplicationPlugins/ngskintools2",
-            Path("/usr/autodesk/ApplicationPlugins/ngskintools2"),
+            Path.home() / "Autodesk/ApplicationPlugins/ngskintools2/Contents/scripts",
+            Path("/usr/autodesk/ApplicationPlugins/ngskintools2/Contents/scripts"),
             Path(os.getenv("PROGRAMDATA", default=""))
-            / "Autodesk/ApplicationPlugins/ngskintools2",
+            / "Autodesk/ApplicationPlugins/ngskintools2/Contents/scripts",
         ]
 
         # Add the first ngSkinTools plugin dir that exists to sitepackages

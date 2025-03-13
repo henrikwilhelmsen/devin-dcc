@@ -71,4 +71,5 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.8.5",
     "pyinstaller>=6.11.1",
+    "basedpyright>=1.28.1",
 ]

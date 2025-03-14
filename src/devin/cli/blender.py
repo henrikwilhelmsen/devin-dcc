@@ -60,7 +60,11 @@ class Blender(BaseDCCCommand):
 
     @field_validator("version", mode="after")
     @classmethod
-    def check_python_version_matches_sys(cls, value: str, info: ValidationInfo) -> str:
+    def check_python_version_matches_sys(
+        cls,
+        value: BLENDER_VERSIONS,
+        info: ValidationInfo,
+    ) -> str:
         """Check that Python version of the requested Blender matches sys.version.
 
         Only runs if include_prefix_site is set to true, otherwise there's no reason

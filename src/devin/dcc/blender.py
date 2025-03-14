@@ -24,10 +24,15 @@ logger: Logger = logging.getLogger(__name__)
 SUCCESS_STATUS_CODE = 200
 
 # Supported Blender versions
-BLENDER_VERSIONS: TypeAlias = Literal["3.6", "4.2", "4.3"]
+BLENDER_VERSIONS: TypeAlias = Literal["3.6", "4.2", "4.3", "4.4"]
 
 # Mapping of supported Blender Python versions
-BLENDER_PYTHON_MAP: dict[str, str] = {"3.6": "3.10", "4.2": "3.11", "4.3": "3.11"}
+BLENDER_PYTHON_MAP: dict[BLENDER_VERSIONS, str] = {
+    "3.6": "3.10",
+    "4.2": "3.11",
+    "4.3": "3.11",
+    "4.4": "3.11",
+}
 
 ARCHIVE_FORMATS: dict[str, str] = {
     "Linux": ".tar.xz",
@@ -120,6 +125,18 @@ BLENDER_DOWNLOAD_CONFIGS: list[BlenderDownloadConfig] = [
         version="4.3",
         long_version="4.3.2",
         url="https://download.blender.org/release/Blender4.3/blender-4.3.2-windows-x64.zip",
+    ),
+    BlenderDownloadConfig(
+        platform="Linux",
+        version="4.4",
+        long_version="4.4.0",
+        url="https://cdn.builder.blender.org/download/daily/blender-4.4.0-candidate+v44.08bd2d687dad-linux.x86_64-release.tar.xz",
+    ),
+    BlenderDownloadConfig(
+        platform="Windows",
+        version="4.4",
+        long_version="4.4.0",
+        url="https://cdn.builder.blender.org/download/daily/blender-4.4.0-candidate+v44.08bd2d687dad-windows.amd64-release.zip",
     ),
 ]
 

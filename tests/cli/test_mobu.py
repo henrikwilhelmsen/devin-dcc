@@ -9,6 +9,7 @@
 import os
 import sys
 from collections.abc import Generator
+from distutils.sysconfig import get_python_lib
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,7 +17,7 @@ import pytest
 from pydantic import ValidationError
 from pydantic_settings import CliApp
 
-from devin.cli.devin import (
+from devin_dcc.cli.devin import (
     Devin,
 )
 
@@ -24,14 +25,14 @@ from devin.cli.devin import (
 @pytest.fixture(name="mock_call")
 def fixture_mock_call() -> Generator[MagicMock | AsyncMock, None, None]:
     """Fixture that mocks the call function."""
-    with patch("devin.cli.mobu.call") as mock:
+    with patch("devin_dcc.cli.mobu.call") as mock:
         yield mock
 
 
 @pytest.fixture(name="mock_get_mobu")
 def fixture_mock_get_mobu() -> Generator[MagicMock | AsyncMock, None, None]:
     """Fixture that mocks the MotionBuilder executable path."""
-    with patch("devin.cli.mobu.get_mobu") as mock:
+    with patch("devin_dcc.cli.mobu.get_mobu") as mock:
         mock.return_value = Path(
             "C:/Program Files/Autodesk/MotionBuilder2024/bin/motionbuilder.exe",
         )
@@ -41,7 +42,7 @@ def fixture_mock_get_mobu() -> Generator[MagicMock | AsyncMock, None, None]:
 @pytest.fixture(name="mock_get_mobupy")
 def fixture_mock_get_mobupy() -> Generator[MagicMock | AsyncMock, None, None]:
     """Fixture that mocks the MotionBuilder Python executable path."""
-    with patch("devin.cli.mobu.get_mobupy") as mock:
+    with patch("devin_dcc.cli.mobu.get_mobupy") as mock:
         mock.return_value = Path(
             "C:/Program Files/Autodesk/MotionBuilder2024/bin/mobupy.exe",
         )
@@ -292,18 +293,18 @@ def test_mobupy_invalid_version(mock_get_mobupy: MagicMock | AsyncMock) -> None:
 
 def test_mobu_missing_executable(mock_get_mobu: MagicMock | AsyncMock) -> None:
     """Test that a FileNotFoundError is raised if the get_mobu returns None."""
-    mock_get_mobu.return_value = None
+    mock_get_mobu.side_effect = FileNotFoundError
 
     with pytest.raises(FileNotFoundError):
-        CliApp().run(Devin, cli_args=["mobu"])
+        _ = CliApp().run(Devin, cli_args=["mobu"])
 
 
 def test_mobupy_missing_executable(mock_get_mobupy: MagicMock | AsyncMock) -> None:
     """Test that a FileNotFoundError is raised if the get_mobupy returns None."""
-    mock_get_mobupy.return_value = None
+    mock_get_mobupy.side_effect = FileNotFoundError
 
     with pytest.raises(FileNotFoundError):
-        CliApp().run(Devin, cli_args=["mobupy"])
+        _ = CliApp().run(Devin, cli_args=["mobupy"])
 
 
 def test_mobu_with_temp_config(
@@ -343,8 +344,8 @@ def test_mobu_with_prefix_site(
     tmp_path: Path,
 ) -> None:
     """Test that the --include-prefix-site option adds prefix site to env var."""
-    expected = (Path(sys.prefix) / "Lib" / "site-packages").as_posix()
-    CliApp().run(Devin, cli_args=["mobu", "--include-prefix-site"])
+    expected = Path(get_python_lib(prefix=sys.prefix)).as_posix()
+    _ = CliApp().run(Devin, cli_args=["mobu", "--include-prefix-site"])
 
     _, kwargs = mock_call.call_args
     result = kwargs["env"]["MOTIONBUILDER_SITE_PATH"]
@@ -359,8 +360,8 @@ def test_mobupy_with_prefix_site(
     tmp_path: Path,
 ) -> None:
     """Test that the --include-prefix-site option adds prefix site to env var."""
-    expected = (Path(sys.prefix) / "Lib" / "site-packages").as_posix()
-    CliApp().run(Devin, cli_args=["mobupy", "--include-prefix-site"])
+    expected = Path(get_python_lib(prefix=sys.prefix)).as_posix()
+    _ = CliApp().run(Devin, cli_args=["mobupy", "--include-prefix-site"])
 
     _, kwargs = mock_call.call_args
     result = kwargs["env"]["MOTIONBUILDER_SITE_PATH"]

@@ -10,8 +10,9 @@ import os
 import sys
 from functools import cached_property
 from subprocess import call
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
+from dccpath import get_blender
 from pydantic import (
     AliasChoices,
     DirectoryPath,
@@ -22,26 +23,31 @@ from pydantic import (
     field_validator,
 )
 
-from devin.cli.base import BaseDCCCommand
-from devin.constants import DATA_DIR
-from devin.dcc.blender import (
-    BLENDER_PYTHON_MAP,
-    BLENDER_VERSIONS,
-    get_blender,
-    get_blender_download_if_missing,
-)
+from devin_dcc.cli.base import BaseDCCCommand
+from devin_dcc.constants import DATA_DIR
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Supported Blender versions
+BLENDER_VERSIONS: TypeAlias = Literal["3.6", "4.2", "4.3", "4.4"]
+
+# Mapping of supported Blender Python versions
+BLENDER_PYTHON_MAP: dict[BLENDER_VERSIONS, str] = {
+    "3.6": "3.10",
+    "4.2": "3.11",
+    "4.3": "3.11",
+    "4.4": "3.11",
+}
+
 
 class Blender(BaseDCCCommand):
     """Run Blender."""
 
     version: BLENDER_VERSIONS = Field(
-        default="4.2",
+        default="4.4",
         validation_alias=AliasChoices("version", "v"),
         description="Which version of Blender to run.",
     )
@@ -53,14 +59,14 @@ class Blender(BaseDCCCommand):
         default=None,
         description="Path to the Blender SYSTEM_SCRIPTS directory.",
     )
-    download: bool = Field(
-        default=True,
-        description="Download Blender if it's not found.",
-    )
 
     @field_validator("version", mode="after")
     @classmethod
-    def check_python_version_matches_sys(cls, value: str, info: ValidationInfo) -> str:
+    def check_python_version_matches_sys(
+        cls,
+        value: BLENDER_VERSIONS,
+        info: ValidationInfo,
+    ) -> str:
         """Check that Python version of the requested Blender matches sys.version.
 
         Only runs if include_prefix_site is set to true, otherwise there's no reason
@@ -143,38 +149,19 @@ class Blender(BaseDCCCommand):
             logger.debug("Using provided executable: '%s'", self.executable)
             return self.executable
 
-        blender: Path | None = None
-
-        # Search devin-dcc resources and system directories
         try:
             blender = get_blender(version=self.version)
-        except KeyError:
-            msg = "Encountered an error when searching for Blender executable"
-            logger.exception(
-                msg=msg,
+        except FileNotFoundError as e:
+            msg = (
+                f"Could not locate Blender executable. Make sure Blender {self.version}"
+                " is installed. If installed in a non-standard location, provide a "
+                "path to the Blender executable with the '--executable' option "
+                "instead."
             )
+            logger.exception(msg=msg)
+            raise FileNotFoundError(msg) from e
 
-        if blender is not None:
-            return blender
-
-        # Try to download if not found and self.download is true
-        if self.download:
-            try:
-                return get_blender_download_if_missing(version=self.version)
-            except FileNotFoundError as e:
-                msg = "An error occurred when downloading Blender"
-                logger.exception(msg=msg)
-                raise FileNotFoundError(msg) from e
-
-        # Raise an exception if all methods for getting the exe failed.
-        msg = (
-            f"Could not locate Blender executable. Make sure Blender {self.version}"
-            " is installed. If installed in a non-standard location, provide a "
-            "path to the Blender executable with the '--executable' option "
-            "instead."
-        )
-        logger.error(msg=msg)
-        raise FileNotFoundError(msg)
+        return blender
 
     def cli_cmd(self) -> None:
         """Blender CLI command.

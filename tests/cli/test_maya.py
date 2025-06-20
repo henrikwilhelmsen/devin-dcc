@@ -15,7 +15,7 @@ import pytest
 from pydantic import ValidationError
 from pydantic_settings import CliApp
 
-from devin.cli.devin import (
+from devin_dcc.cli.devin import (
     Devin,
 )
 
@@ -23,14 +23,14 @@ from devin.cli.devin import (
 @pytest.fixture(name="mock_call")
 def fixture_mock_call() -> Generator[MagicMock | AsyncMock, None, None]:
     """Fixture that mocks the call function."""
-    with patch("devin.cli.maya.call") as mock:
+    with patch("devin_dcc.cli.maya.call") as mock:
         yield mock
 
 
 @pytest.fixture(name="mock_get_maya")
 def fixture_mock_get_maya() -> Generator[MagicMock | AsyncMock, None, None]:
     """Fixture that mocks the Maya executable path."""
-    with patch("devin.cli.maya.get_maya") as mock:
+    with patch("devin_dcc.cli.maya.get_maya") as mock:
         mock.return_value = Path("C:/Program Files/Autodesk/Maya2024/bin/maya.exe")
         yield mock
 
@@ -38,7 +38,7 @@ def fixture_mock_get_maya() -> Generator[MagicMock | AsyncMock, None, None]:
 @pytest.fixture(name="mock_get_mayapy")
 def fixture_mock_get_mayapy() -> Generator[MagicMock | AsyncMock, None, None]:
     """Fixture that mocks the MayaPy executable path."""
-    with patch("devin.cli.maya.get_mayapy") as mock:
+    with patch("devin_dcc.cli.maya.get_mayapy") as mock:
         mock.return_value = Path("C:/Program Files/Autodesk/Maya2024/bin/mayapy.exe")
         yield mock
 
@@ -49,8 +49,9 @@ def test_maya_no_args(
     mock_env: os._Environ[str],
 ) -> None:
     """Test that the maya command runs with no arguments and calls the maya exe."""
-    CliApp().run(Devin, cli_args=["maya"])
+    _ = CliApp().run(Devin, cli_args=["maya"])
     mock_call.assert_called_once()
+
     _, kwargs = mock_call.call_args
     assert kwargs["args"] == [mock_get_maya.return_value.as_posix()]
 
@@ -61,16 +62,15 @@ def test_maya_args(
     mock_env: os._Environ[str],
 ) -> None:
     """Test that the --args option passes values to the Maya executable as expected."""
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         # Note: Need to use a JSON style list or a single string "--args=-batch,..."
         # for the CLI to not confuse the -batch argument as a new option
         cli_args=["maya", "--args", "[-batch,--foo,bar]"],
     )
-
     mock_call.assert_called_once()
-    _, kwargs = mock_call.call_args
 
+    _, kwargs = mock_call.call_args
     assert kwargs["args"] == [
         mock_get_maya.return_value.as_posix(),
         "-batch",
@@ -117,7 +117,7 @@ def test_maya_paths(
     ]
 
     # Run the cli
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         cli_args=[
             "maya",
@@ -162,7 +162,7 @@ def test_maya_existing_python_path(
     existing_py_path = tmp_path / "existing" / "python" / "path"
     mock_env["PYTHONPATH"] = existing_py_path.as_posix()
 
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         cli_args=[
             "maya",
@@ -187,7 +187,7 @@ def test_maya_executable_arg(
     executable = tmp_path / "maya.exe"
     executable.touch()
 
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         cli_args=[
             "maya",
@@ -205,15 +205,15 @@ def test_maya_executable_arg(
 def test_maya_invalid_version(mock_get_maya: MagicMock | AsyncMock) -> None:
     """Test that a ValidationError is raised if an invalid version is passed."""
     with pytest.raises(ValidationError):
-        CliApp().run(Devin, cli_args=["maya", "-v", "invalid"])
+        _ = CliApp().run(Devin, cli_args=["maya", "-v", "invalid"])
 
 
 def test_maya_missing_executable(mock_get_maya: MagicMock | AsyncMock) -> None:
     """Test that a FileNotFoundError is raised if the get_maya function returns None."""
-    mock_get_maya.return_value = None
+    mock_get_maya.side_effect = FileNotFoundError
 
     with pytest.raises(FileNotFoundError):
-        CliApp().run(Devin, cli_args=["maya"])
+        _ = CliApp().run(Devin, cli_args=["maya"])
 
 
 def test_mayapy_no_args(
@@ -222,7 +222,7 @@ def test_mayapy_no_args(
     mock_env: os._Environ[str],
 ) -> None:
     """Test that the maya command runs with no arguments and calls the maya exe."""
-    CliApp().run(Devin, cli_args=["mayapy"])
+    _ = CliApp().run(Devin, cli_args=["mayapy"])
     mock_call.assert_called_once()
     _, kwargs = mock_call.call_args
     assert kwargs["args"][0] == mock_get_mayapy.return_value.as_posix()
@@ -234,7 +234,7 @@ def test_mayapy_args(
     mock_env: os._Environ[str],
 ) -> None:
     """Test that the --args option passes values to the Maya executable as expected."""
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         # Note: Need to use a JSON style list or a single string "--args=-batch,..."
         # for the CLI to not confuse the -batch argument as a new option
@@ -261,7 +261,7 @@ def test_mayapy_executable_arg(
     executable = tmp_path / "maya.exe"
     executable.touch()
 
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         cli_args=[
             "mayapy",
@@ -278,7 +278,7 @@ def test_mayapy_executable_arg(
 
 def test_mayapy_missing_executable(mock_get_mayapy: MagicMock | AsyncMock) -> None:
     """Test that a FileNotFoundError is raised if the get_maya function returns None."""
-    mock_get_mayapy.return_value = None
+    mock_get_mayapy.side_effect = FileNotFoundError
 
     with pytest.raises(FileNotFoundError):
-        CliApp().run(Devin, cli_args=["mayapy"])
+        _ = CliApp().run(Devin, cli_args=["mayapy"])

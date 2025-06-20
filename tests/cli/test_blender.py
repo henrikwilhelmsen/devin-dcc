@@ -15,7 +15,7 @@ import pytest
 from pydantic import ValidationError
 from pydantic_settings import CliApp
 
-from devin.cli.devin import (
+from devin_dcc.cli.devin import (
     Devin,
 )
 
@@ -23,14 +23,14 @@ from devin.cli.devin import (
 @pytest.fixture(name="mock_call")
 def fixture_mock_call() -> Generator[MagicMock | AsyncMock, None, None]:
     """Fixture that mocks the call function."""
-    with patch("devin.cli.blender.call") as mock:
+    with patch("devin_dcc.cli.blender.call") as mock:
         yield mock
 
 
 @pytest.fixture(name="mock_get_blender")
 def fixture_mock_get_blender() -> Generator[MagicMock | AsyncMock, None, None]:
     """Fixture that mocks the Blender executable path."""
-    with patch("devin.cli.blender.get_blender") as mock:
+    with patch("devin_dcc.cli.blender.get_blender") as mock:
         mock.return_value = Path("usr/local/Blender Foundation/blender 4.3/blender")
         yield mock
 
@@ -40,9 +40,10 @@ def test_blender_no_args(
     mock_get_blender: MagicMock | AsyncMock,
     mock_env: os._Environ[str],
 ) -> None:
-    """Test that the maya command runs with no arguments and calls the maya exe."""
-    CliApp().run(Devin, cli_args=["blender"])
+    """Test that the command runs with no arguments and calls the blender exe."""
+    _ = CliApp().run(Devin, cli_args=["blender"])
     mock_call.assert_called_once()
+
     _, kwargs = mock_call.call_args
     assert kwargs["args"][0] == mock_get_blender.return_value.as_posix()
 
@@ -53,7 +54,7 @@ def test_blender_args(
     mock_env: os._Environ[str],
 ) -> None:
     """Test that the --args option passes values to the Blender exe as expected."""
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         # Note: Need to use a JSON style list or a single string "--args=-batch,..."
         # for the CLI to not confuse the -batch argument as a new option
@@ -61,8 +62,8 @@ def test_blender_args(
     )
 
     mock_call.assert_called_once()
-    _, kwargs = mock_call.call_args
 
+    _, kwargs = mock_call.call_args
     assert kwargs["args"] == [
         mock_get_blender.return_value.as_posix(),
         "-batch",
@@ -96,7 +97,7 @@ def test_blender_paths(
     ]
 
     # Run the cli
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         cli_args=[
             "blender",
@@ -105,12 +106,11 @@ def test_blender_paths(
             *system_scripts_arg,
         ],
     )
-
     mock_call.assert_called_once()
-    _, kwargs = mock_call.call_args
 
     # Check that the paths passed to the command was added to env
-    expected_site_path = ";".join([x.as_posix() for x in site_paths])
+    _, kwargs = mock_call.call_args
+    expected_site_path = os.pathsep.join([x.as_posix() for x in site_paths])
 
     assert system_extensions.as_posix() == kwargs["env"]["BLENDER_SYSTEM_EXTENSIONS"]
     assert system_scripts.as_posix() == kwargs["env"]["BLENDER_SYSTEM_SCRIPTS"]
@@ -126,7 +126,7 @@ def test_blender_executable_arg(
     executable = tmp_path / "blender"
     executable.touch()
 
-    CliApp().run(
+    _ = CliApp().run(
         Devin,
         cli_args=[
             "blender",
@@ -134,17 +134,16 @@ def test_blender_executable_arg(
             executable.as_posix(),
         ],
     )
-
     mock_call.assert_called_once()
-    _, kwargs = mock_call.call_args
 
+    _, kwargs = mock_call.call_args
     assert kwargs["args"] == [executable.as_posix()]
 
 
 def test_blender_invalid_version(mock_get_blender: MagicMock | AsyncMock) -> None:
     """Test that a ValidationError is raised if an invalid version is passed."""
     with pytest.raises(ValidationError):
-        CliApp().run(Devin, cli_args=["blender", "-v", "invalid"])
+        _ = CliApp().run(Devin, cli_args=["blender", "-v", "invalid"])
 
 
 def test_blender_missing_executable(mock_get_blender: MagicMock | AsyncMock) -> None:
@@ -152,4 +151,4 @@ def test_blender_missing_executable(mock_get_blender: MagicMock | AsyncMock) -> 
     mock_get_blender.side_effect = FileNotFoundError
 
     with pytest.raises(FileNotFoundError):
-        CliApp().run(Devin, cli_args=["blender", "--download", "false"])
+        _ = CliApp().run(Devin, cli_args=["blender"])

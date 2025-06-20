@@ -15,6 +15,7 @@ from pathlib import Path
 from subprocess import call, check_output
 from typing import Literal
 
+from dccpath import get_maya, get_mayapy
 from pydantic import (
     AliasChoices,
     DirectoryPath,
@@ -24,9 +25,8 @@ from pydantic import (
 )
 from pydantic_settings import CliImplicitFlag
 
-from devin.cli.base import BaseDCCCommand
-from devin.constants import DATA_DIR
-from devin.dcc.maya import get_maya, get_mayapy
+from devin_dcc.cli.base import BaseDCCCommand
+from devin_dcc.constants import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -119,17 +119,16 @@ class Maya(MayaBaseCommand):
         if self.executable is not None:
             return self.executable
 
-        exe = get_maya(version=self.version)
-        if exe is None:
+        try:
+            return get_maya(version=self.version)
+        except FileNotFoundError as e:
             msg = (
                 f"Could not locate Maya {self.version} executable. Make sure it is "
                 f"installed. If installed in a non-standard location, provide a path to"
                 f" the Maya executable with the '--executable' option instead."
             )
             logger.exception(msg=msg)
-            raise FileNotFoundError(msg)
-
-        return exe
+            raise FileNotFoundError(msg) from e
 
     def cli_cmd(self) -> None:
         """Run Maya with computed arguments and env."""
@@ -211,17 +210,16 @@ class Mayapy(MayaBaseCommand):
         if self.executable is not None:
             return self.executable
 
-        exe = get_mayapy(version=self.version)
-        if exe is None:
+        try:
+            return get_mayapy(version=self.version)
+        except FileNotFoundError as e:
             msg = (
                 f"Could not locate mayapy executable. Make sure Maya {self.version} is "
                 f"installed. If installed in a non-standard location, provide a path to"
                 f" the mayapy executable with the '--executable' option instead."
             )
             logger.exception(msg=msg)
-            raise FileNotFoundError(msg)
-
-        return exe
+            raise FileNotFoundError(msg) from e
 
     def cli_cmd(self) -> None:
         """Run mayapy with computed args and env."""

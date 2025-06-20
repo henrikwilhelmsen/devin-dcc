@@ -16,10 +16,9 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from devin.cli.blender import Blender
-from devin.cli.cleanup import ClearResources
-from devin.cli.maya import Maya, Mayapy
-from devin.cli.mobu import Mobu, Mobupy
+from devin_dcc.cli.blender import Blender
+from devin_dcc.cli.maya import Maya, Mayapy
+from devin_dcc.cli.mobu import Mobu, Mobupy
 
 logger: logging.Logger = logging.getLogger(name=__name__)
 
@@ -39,7 +38,6 @@ class Devin(BaseSettings):
     mobu: CliSubCommand[Mobu]
     mobupy: CliSubCommand[Mobupy]
     blender: CliSubCommand[Blender]
-    clear_resources: CliSubCommand[ClearResources]
 
     def cli_cmd(self) -> None:
         """Devin CLI command.

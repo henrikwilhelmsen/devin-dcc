@@ -117,6 +117,6 @@ class BaseDCCCommand(BaseCommand):
             site_dirs.extend(self.site_path)
 
         if site_dirs:
-            return ";".join([x.as_posix() for x in site_dirs])
+            return os.pathsep.join([x.as_posix() for x in site_dirs])
 
         return None

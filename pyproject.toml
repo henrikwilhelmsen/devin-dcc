@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "httpx>=0.28.1",
+    "dccpath>=0.1.0",
     "pydantic>=2.10.5",
     "pydantic-settings>=2.7.1",
 ]
@@ -17,29 +17,33 @@ license-files = ["LICENSE"]
 keywords = ["CLI", "DCC", "Motionbuilder", "Blender", "Maya"]
 classifiers = [
     "Private :: Do Not Upload",
-    "Development Status :: 2 - Pre-Alpha",
     "Framework :: Pydantic",
 ]
 
 [project.scripts]
-devin = "devin:main"
+devin = "devin_dcc:main"
 
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.pdm.build]
-includes = ["src"]
-package-dir = "src"
-source-includes = ["tests"]
+[tool.hatch.version]
+source = "vcs"
 
-[tool.pdm.version]
-source = "scm"
+[tool.basedpyright]
+include = ["src"]
+reportAny = false
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-v"
+testpaths = [
+    "tests",
+]
 
 [tool.ruff]
 line-length = 88
-src = ["src", "blender_scripts", "mobu_scripts"]
+src = ["src"]
 target-version = "py310"
 
 [tool.ruff.format]
@@ -59,10 +63,6 @@ per-file-ignores = { "tests/*" = [
 ] }
 
 pydocstyle.convention = "google"
-
-[tool.basedpyright]
-include = ["src"]
-reportAny = false
 
 [dependency-groups]
 dev = [

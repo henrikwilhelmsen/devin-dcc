@@ -12,7 +12,7 @@ and run `devin --help`
 
 from pydantic_settings import CliApp
 
-from devin.cli.devin import Devin
+from devin_dcc.cli.devin import Devin
 
 
 def main() -> None:

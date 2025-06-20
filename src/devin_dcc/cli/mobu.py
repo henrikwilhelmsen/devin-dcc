@@ -12,10 +12,10 @@ import shutil
 import sys
 import tempfile
 from functools import cached_property
-from pathlib import Path
 from subprocess import call
 from typing import Literal
 
+from dccpath import get_mobu, get_mobupy
 from pydantic import (
     AliasChoices,
     DirectoryPath,
@@ -26,9 +26,8 @@ from pydantic import (
     field_validator,
 )
 
-from devin.cli.base import BaseDCCCommand
-from devin.constants import DATA_DIR
-from devin.dcc.mobu import get_mobu, get_mobupy
+from devin_dcc.cli.base import BaseDCCCommand
+from devin_dcc.constants import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +45,6 @@ class MobuBase(BaseDCCCommand):
         default="2025",
         validation_alias=AliasChoices("version", "v"),
     )
-
-    @computed_field
-    @property
-    def _computed_site_path(self) -> str | None:
-        site_dirs = []
-        if self.include_prefix_site:
-            site_dirs = [(Path(sys.prefix) / "Lib" / "site-packages")]
-
-        if self.site_path:
-            site_dirs.extend(self.site_path)
-
-        if site_dirs:
-            return os.pathsep.join([x.as_posix() for x in site_dirs])
-
-        return None
 
     @field_validator("version", mode="after")
     @classmethod
@@ -94,17 +78,16 @@ class Mobupy(MobuBase):
         if self.executable is not None:
             return self.executable
 
-        exe = get_mobupy(version=self.version)
-        if exe is None:
+        try:
+            return get_mobupy(version=self.version)
+        except FileNotFoundError as e:
             msg = (
                 f"Could not locate Mobupy executable. Make sure Mobu {self.version} is "
                 f"installed. If installed in a non-standard location, provide a path to"
                 f" the Mobupy executable with the '--executable' option instead."
             )
             logger.exception(msg=msg)
-            raise FileNotFoundError(msg)
-
-        return exe
+            raise FileNotFoundError(msg) from e
 
     @computed_field
     @cached_property
@@ -142,7 +125,7 @@ class Mobupy(MobuBase):
             env["MB_CONFIG_DIR"] = temp_dir
             logger.info("Created temp config dir: '%s'", temp_dir)
         try:
-            call(
+            _ = call(
                 args=args,
                 env=env,
             )
@@ -174,18 +157,16 @@ class Mobu(MobuBase):
         if self.executable is not None:
             return self.executable
 
-        exe = get_mobu(version=self.version)
-        if exe is None:
+        try:
+            return get_mobu(version=self.version)
+        except FileNotFoundError as e:
             msg = (
                 f"Could not locate Mobu executable. Make sure Mobu {self.version} is "
                 f"installed. If installed in a non-standard location, provide a path to"
                 f" the Mobu executable with the '--executable' option instead."
             )
-
             logger.exception(msg=msg)
-            raise FileNotFoundError(msg)
-
-        return exe
+            raise FileNotFoundError(msg) from e
 
     @computed_field
     @cached_property
@@ -241,7 +222,7 @@ class Mobu(MobuBase):
             logger.info("Created temp config dir: '%s'", temp_dir)
 
         try:
-            call(
+            _ = call(
                 args=args,
                 env=env,
             )

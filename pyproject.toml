@@ -52,7 +52,7 @@ docstring-code-format = true
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "FIX002", # Leave TODO's
+    "FIX002", # Leave TODO
     "TD002",  # Missing author in TODO
     "TD003",  # Missing issue link in TODO
     "S101",   # Ignore assert use (pytest)

@@ -52,7 +52,7 @@ def unset_blender_user_scripts_envvar() -> None:
         del os.environ[BLENDER_USER_SCRIPTS]
 
 
-def _initialize() -> None:
+def _initialize() -> None:  # pyright: ignore[reportUnusedFunction]
     unset_blender_user_scripts_envvar()
     add_extra_site_dirs()
 
@@ -67,7 +67,7 @@ def register() -> None:
 
     if _initialize is not None:
         _initialize()
-        del mod._initialize  # type: ignore[misc] # noqa: SLF001
+        del mod._initialize  # type: ignore[misc] # noqa: SLF001 # pyright: ignore[reportAttributeAccessIssue]
 
 
 def unregister() -> None:  # noqa: D103
